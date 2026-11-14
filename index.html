@@ -422,6 +422,21 @@
   .tvbars i{ width:22px; height:14px; border-radius:5px; background:#E3DDEB; }
   .tvbars i.on{ background:#5BBE6E; }
   .hp.tv.won{ background:#FFF3C4; box-shadow:0 4px 0 #E3A52A, 0 0 0 4px #FFE38A; }
+  .hp.games.won{ background:#DDF3E4; box-shadow:0 4px 0 #2E9E6A, 0 0 0 4px #BFE8CC; }
+  .gbars{ display:inline-flex; gap:3px; }
+  .gbars i{ width:6px; height:14px; border-radius:3px; background:#E3DDEB; }
+  .gbars i.on{ background:#5BBE6E; }
+  .gpick{ position:fixed; inset:0; z-index:99998; background:rgba(20,16,50,.55); display:flex; align-items:center; justify-content:center; }
+  .gpick .box{ background:#fff; border-radius:24px; padding:22px; display:flex; flex-direction:column; gap:12px; min-width:260px; max-width:90vw; }
+  .gpick h3{ margin:0 0 4px; font:800 22px 'Baloo 2',sans-serif; text-align:center; color:#2B2840; }
+  .gpick button{ border:none; border-radius:16px; padding:14px 18px; font:700 20px 'Baloo 2',sans-serif; color:#fff; cursor:pointer; }
+  .gpick button.x{ background:#EEF1F6; color:#2B2840; }
+  @media (max-width:600px){
+    body .hud{ gap:4px !important; padding-left:6px !important; padding-right:6px !important; }
+    body .hud .logo span{ display:none; } body .hud .logo{ margin-right:0; } body .hud .logo b{ width:30px; height:30px; font-size:16px; }
+    body .hud .hp{ padding:0 7px; font-size:14px; height:36px; gap:3px; }
+    body .hud .tvbars{ gap:2px; } body .hud .tvbars i{ width:10px; } body .hud .gbars{ gap:2px; } body .hud .gbars i{ width:4px; }
+  }
   @keyframes tvBlink{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.25); opacity:.25; } }
   .hp.tv.blink{ animation:tvBlink .6s ease-in-out 3; }
   .quest{ position:absolute; z-index:5; left:12px; bottom:calc(env(safe-area-inset-bottom, 0px) + 12px); border:none; display:flex; align-items:center; gap:10px; padding:10px 18px; border-radius:18px; background:#2E9E6A; color:#fff; font:700 19px 'Baloo 2', sans-serif; box-shadow:0 4px 0 #1F7A50; cursor:pointer; max-width:calc(100% - 24px); text-align:left; }
@@ -2140,6 +2155,13 @@
     return n;
   }
   function tvBars(){ var n = tvCount(); return [0,1,2].map(function(i){ return n > i; }); }
+  var GAMES_NEEDED = 10; // finished Writing levels today (any Writing tab) that unlock the games
+  function levelsToday(){
+    var st = loadStreaks(), t = todayStr(), n = 0;
+    for(var k in st){ if(k.indexOf('writing::') === 0 && st[k] && st[k].date === t) n += st[k].count || 0; }
+    return n;
+  }
+  function gamesUnlocked(){ return levelsToday() >= GAMES_NEEDED; }
   function tvAnnounce(){ // once per day: blink the TV 3 times and ping the parent's phone
     var t = todayStr(), seen = null;
     try{ seen = localStorage.getItem('popoosh_tvAlert_v1'); }catch(e){}
@@ -2225,7 +2247,8 @@
       '<button class="hp" id="isCoins" aria-label="Piggy Bank"><span class="coin"></span><span id="isCoinsN">$0.00</span></button>'+
       '<button class="hp" id="isStars" aria-label="Stars, and my hut">⭐ <span id="isStarsN">0</span></button>'+
       '<button class="hp" id="isBag" aria-label="My collection">🎒</button>'+
-      '<button class="hp tv" id="isTv" aria-label="TV time">📺 <span class="tvbars" id="isTvBars"><i></i><i></i><i></i></span></button></div>'+
+      '<button class="hp tv" id="isTv" aria-label="TV time">📺 <span class="tvbars" id="isTvBars"><i></i><i></i><i></i></span></button>'+
+      '<button class="hp games" id="isGames" aria-label="Games"><span id="isGamesIcon">🔒</span> <span class="gbars" id="isGamesBars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button></div>'+
     '<div class="scr" id="scrHome"></div><div class="scr" id="scrTopics"></div><div class="scr" id="scrTrail"></div><div class="scr" id="scrHut"></div><div class="scr" id="scrExplore"></div>'+
     '<div class="bubble off" id="isBubble"></div>';
   document.body.appendChild(root);
@@ -2289,6 +2312,12 @@
     document.querySelectorAll('#isTvBars i').forEach(function(el, i){ el.classList.toggle('on', bars[i]); });
     document.getElementById('isTv').classList.toggle('won', won);
     if(won) tvAnnounce();
+    var gn = levelsToday(), gOpen = gn >= GAMES_NEEDED, gb = document.getElementById('isGames');
+    if(gb){
+      document.querySelectorAll('#isGamesBars i').forEach(function(el, i){ el.classList.toggle('on', gn > i); });
+      document.getElementById('isGamesIcon').textContent = gOpen ? '🎮' : '🔒';
+      gb.classList.toggle('won', gOpen);
+    }
   }
 
   // ---- home
@@ -2486,6 +2515,18 @@
     var bars = tvBars();
     if(bars.every(Boolean)) say('TV time earned! Go tell a grown-up!', 4000);
     else { say('Finish '+(TV_NEEDED - tvCount())+' more writing level'+(TV_NEEDED - tvCount() === 1 ? '' : 's')+' today for TV time!', 4500); }
+  };
+  document.getElementById('isGames').onclick = function(){
+    if(!gamesUnlocked()){ var left = GAMES_NEEDED - levelsToday(); say('Finish '+left+' more writing level'+(left === 1 ? '' : 's')+' today to unlock games!', 4500); return; }
+    var ov = document.createElement('div'); ov.className = 'gpick';
+    ov.innerHTML = '<div class="box"><h3>🎮 Pick a game!</h3>'+SUBJECTS[3].subtopics.map(function(st, i){
+      return '<button data-g="'+i+'" style="background:'+st.color+'">'+(SUBTOPIC_ICONS[st.id]||'🎮')+' '+esc2(st.label)+'</button>'; }).join('')+'<button class="x">Close</button></div>';
+    document.body.appendChild(ov);
+    ov.onclick = function(e){
+      var b = e.target.closest('button'), g = b && b.getAttribute('data-g');
+      if(g !== null && g !== undefined && b){ var st = SUBJECTS[3].subtopics[+g]; ov.remove(); launchApp(st.standalone, 'explore', null, 'explore::'+st.id); }
+      else if(b && b.className === 'x' || e.target === ov) ov.remove();
+    };
   };
   function islandRefresh(){
     refreshHud();
